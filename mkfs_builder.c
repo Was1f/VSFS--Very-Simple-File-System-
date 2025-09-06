@@ -1,7 +1,5 @@
 // Build: gcc -O2 -std=c17 -Wall -Wextra mkfs_minivsfs.c -o mkfs_builder
 
-//to do remove errno.h logics
-
 
 #define _FILE_OFFSET_BITS 64
 #include <stdio.h>
@@ -10,37 +8,45 @@
 #include <string.h>
 #include <inttypes.h>
 #include <errno.h>
+
+
 #include <time.h>
 #include <assert.h>
 
-#define BS 4096u               // block size
+#define BS 4096u
+#define ROOT_INO 1u            
 #define INODE_SIZE 128u
-#define ROOT_INO 1u
+
 
 // uint64_t g_random_seed = 0; // This should be replaced by seed value from the CLI.
+// below contains some basic structures you need for your project
+// you are free to create more structures as you require
 
 
 #pragma pack(push, 1)
 typedef struct {
-    uint32_t magic;              // 0x4D565346
-    uint32_t version;            // 1
-    uint32_t block_size;         // 4096
-    uint64_t total_blocks;       // Calculated from size_kib
-    uint64_t inode_count;        // From CLI
-    uint64_t inode_bitmap_start; // 1
-    uint64_t inode_bitmap_blocks;// 1
-    uint64_t data_bitmap_start;  // 2
-    uint64_t data_bitmap_blocks; // 1
-    uint64_t inode_table_start;  // 3
-    uint64_t inode_table_blocks; // Calculated
-    uint64_t data_region_start;  // 3 + inode_table_blocks
-    uint64_t data_region_blocks; // total_blocks - data_region_start
-    uint64_t root_inode;         // 1
-    uint64_t mtime_epoch;        // Build time (Unix Epoch)
-    uint32_t flags;              // 0
-    
-    // THIS FIELD SHOULD STAY AT THE END
+     // CREATE YOUR SUPERBLOCK HERE
+    // ADD ALL FIELDS AS PROVIDED BY THE SPECIFICATION
+    uint32_t magic;         
+    uint32_t version;           
+    uint32_t block_size;        
+    uint64_t total_blocks;      
+    uint64_t inode_count;        
+    uint64_t inode_bitmap_start; 
+    uint64_t inode_bitmap_blocks;
+    uint64_t data_bitmap_start;  
+    uint64_t data_bitmap_blocks; 
+    uint64_t inode_table_start;  
+    uint64_t inode_table_blocks; 
+    uint64_t data_region_start;  
+    uint64_t data_region_blocks; 
+    uint64_t root_inode;         
+    uint64_t mtime_epoch;        
+    uint32_t flags;            
+      // THIS FIELD SHOULD STAY AT THE END
     // ALL OTHER FIELDS SHOULD BE ABOVE THIS
+
+
     uint32_t checksum;           // crc32(superblock[0..4091])
 } superblock_t;
 #pragma pack(pop)
@@ -48,21 +54,23 @@ _Static_assert(sizeof(superblock_t) == 116, "superblock must fit in one block");
 
 #pragma pack(push,1)
 typedef struct {
-    uint16_t mode;               // (0100000)8 for files, (0040000)8 for directories
-    uint16_t links;              // Number of links
-    uint32_t uid;                // 0
-    uint32_t gid;                // 0
-    uint64_t size_bytes;         // Size in bytes
-    uint64_t atime;              // Access time (Unix Epoch)
-    uint64_t mtime;              // Modification time (Unix Epoch)
-    uint64_t ctime;              // Creation time (Unix Epoch)
-    uint32_t direct[12];         // Direct block pointers
-    uint32_t reserved_0;         // 0
-    uint32_t reserved_1;         // 0
-    uint32_t reserved_2;         // 0
-    uint32_t proj_id;            // Your group ID (set to 0 as not specified in CLI)
-    uint32_t uid16_gid16;        // 0
-    uint64_t xattr_ptr;          // 0
+     // CREATE YOUR SUPERBLOCK HERE
+    // ADD ALL FIELDS AS PROVIDED BY THE SPECIFICATION
+    uint16_t mode;              
+    uint16_t links;             
+    uint32_t uid;                
+    uint32_t gid;                
+    uint64_t size_bytes;         
+    uint64_t atime;             
+    uint64_t mtime;              
+    uint64_t ctime;              
+    uint32_t direct[12];        
+    uint32_t reserved_0;         
+    uint32_t reserved_1;         
+    uint32_t reserved_2;         
+    uint32_t proj_id;           
+    uint32_t uid16_gid16;       
+    uint64_t xattr_ptr;         
     
     // THIS FIELD SHOULD STAY AT THE END
     // ALL OTHER FIELDS SHOULD BE ABOVE THIS
@@ -73,11 +81,13 @@ _Static_assert(sizeof(inode_t)==INODE_SIZE, "inode size mismatch");
 
 #pragma pack(push,1)
 typedef struct {
-    uint32_t inode_no;           // Inode number (0 if free)
-    uint8_t type;                // 1=file, 2=dir
-    char name[58];               // Name (null-terminated)
+    // CREATE YOUR INODE HERE
+    // IF CREATED CORRECTLY, THE STATIC_ASSERT ERROR SHOULD BE GONE
+    uint32_t inode_no;           
+    uint8_t type;               
+    char name[58];               
     
-    uint8_t checksum;            // XOR of bytes 0..62
+    uint8_t checksum;           
 } dirent64_t;
 #pragma pack(pop)
 _Static_assert(sizeof(dirent64_t)==64, "dirent size mismatch");
@@ -125,6 +135,8 @@ void dirent_checksum_finalize(dirent64_t* de) {
     de->checksum = x;
 }
 
+
+
 int main(int argc, char *argv[]) {
     crc32_init();
     
@@ -147,7 +159,7 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    // Validate parameters
+    // Validating parameters, we are checking if the parameters follow the limitations of the question
     if (image_name == NULL || size_kib == 0 || inodes == 0) {
         fprintf(stderr, "Error: Missing required parameters.\n");
         fprintf(stderr, "Usage: mkfs_builder --image out.img --size-kib <180..4096> --inodes <128..512>\n");
@@ -162,8 +174,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    // Calculate file system parameters
-    uint64_t total_blocks = size_kib * (1024 / 4096);  
+    // Calculations blah blah
+    uint64_t total_blocks = size_kib / 4;  
     uint64_t inode_table_blocks = (inodes * INODE_SIZE + BS - 1) / BS; // Ceiling division
     uint64_t data_region_start = 3 + inode_table_blocks;
     if (data_region_start >= total_blocks) {
@@ -172,14 +184,14 @@ int main(int argc, char *argv[]) {
     }
     uint64_t data_region_blocks = total_blocks - data_region_start;
     
-    // Allocate memory for the entire disk image (zero-initialized)
-    uint8_t *image = calloc(total_blocks, BS);
+   
+    uint8_t *image = calloc(total_blocks, BS); 
     if (image == NULL) {
         fprintf(stderr, "Error: Failed to allocate memory for disk image.\n");
         return 1;
     }
     
-    // Set up superblock (at block 0)
+    // creating the superblock at block 0
     superblock_t *sb = (superblock_t *)image;
     sb->magic = 0x4D565346;
     sb->version = 1;
@@ -200,19 +212,19 @@ int main(int argc, char *argv[]) {
     sb->flags = 0;
     superblock_crc_finalize(sb);
     
-    // Set up inode table (starting at block 3)
+    // creating inode table at block 3)
     inode_t *inode_table = (inode_t *)(image + 3 * BS);
-    inode_t *root = &inode_table[0];  // Inode 1 is at index 0 (1-indexed)
+    inode_t *root = &inode_table[0];  
     
-    root->mode = 040000;  // (0040000)8 for directory
-    root->links = 2;      // . and ..
+    root->mode = 040000; 
+    root->links = 2;     
     root->uid = 0;
     root->gid = 0;
-    root->size_bytes = 128;  // 2 dirents * 64 bytes
+    root->size_bytes = 128;  
     root->atime = (uint64_t)now;
     root->mtime = (uint64_t)now;
     root->ctime = (uint64_t)now;
-    root->direct[0] = (uint32_t)data_region_start;  // First data block for root dir
+    root->direct[0] = (uint32_t)data_region_start;  // 1st data block for root dir
     for (int i = 1; i < 12; i++) {
         root->direct[i] = 0;
     }
@@ -224,15 +236,15 @@ int main(int argc, char *argv[]) {
     root->xattr_ptr = 0;
     inode_crc_finalize(root);
     
-    // Set up inode bitmap (at block 1): Mark inode 1 as allocated (bit 0)
+    // creating inode bitmap at block 1
     uint8_t *inode_bitmap = image + 1 * BS;
     inode_bitmap[0] |= (1 << 0);  // Bit 0 for inode 1
     
-    // Set up data bitmap (at block 2): Mark first data block as allocated (bit 0)
+    // creating data bitmap at block 2
     uint8_t *data_bitmap = image + 2 * BS;
-    data_bitmap[0] |= (1 << 0);  // Bit 0 for first data block
+    data_bitmap[0] |= (1 << 0);  // Bit 0 for 1st data block
     
-    // Set up root directory data (in first data block)
+    // creating root directory data 
     uint8_t *root_data = image + data_region_start * BS;
     dirent64_t *de_dot = (dirent64_t *)root_data;
     de_dot->inode_no = ROOT_INO;
@@ -254,7 +266,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    //change the logic here to something simple
+    //change the logic here to something simple??
     
     size_t written = fwrite(image, BS, total_blocks, fp);
     if (written != total_blocks) {
